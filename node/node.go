@@ -112,8 +112,6 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (node *Node) Connect(msg *messaging.Message, request *http.Request) {
-	//TODO Add different modes for connecting, but let's just make the test pass for now.
-	//TODO URL should come from request, not from fakeable content
 	if !node.Config.ForceConnectionRequests {
 		log.Printf("{Host: %v, connection: DENIED, reason: Only connections are accepted when ForceConnectionRequests is True }", request.Host)
 		return
