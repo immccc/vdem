@@ -2,7 +2,7 @@ package node
 
 import (
 	"fmt"
-	"immccc/vdem/messaging"
+	"immccc/vdem/event"
 	"immccc/vdem/peer"
 	"log"
 	http "net/http"
@@ -16,6 +16,8 @@ type Node struct {
 	Config NodeConfig
 	Peers  []peer.Peer
 }
+
+var upgrader = websocket.Upgrader{}
 
 func (node *Node) Start(wg *sync.WaitGroup) {
 	if wg != nil {
@@ -53,9 +55,9 @@ func (node *Node) Start(wg *sync.WaitGroup) {
 
 	if node.Peers != nil && len(node.Peers) > 0 {
 		//TODO Add host in the config
-		msg := messaging.BuildConnectionAttemptMsg(node.Config.PubKey, "", node.Config.ServerPort)
-		msg.Sign(node.Config.PrivateKey)
-		node.Send(&msg, &node.Peers[0])
+		event := event.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
+		event.Sign(node.Config.PrivateKey)
+		node.Send(&event, &node.Peers[0])
 	}
 }
 
@@ -67,16 +69,16 @@ func (node *Node) AddPeer(pr peer.Peer) {
 	node.Peers = append(node.Peers, pr)
 }
 
-func (node *Node) Send(msg *messaging.Message, peer *peer.Peer) {
+func (node *Node) Send(event *event.Event, peer *peer.Peer) {
 	conn, resp, err := websocket.DefaultDialer.Dial(peer.ToURL(), nil)
 	if err != nil {
-		log.Printf("Cannot send message! %v to peer %v. Error is %v", msg, peer.ToURL(), err)
+		log.Printf("Cannot send event! %v to peer %v. Error is %v", event, peer.ToURL(), err)
 		log.Printf("Resp: %v", resp)
 	}
 	defer conn.Close()
 
-	msg.Sign(node.Config.PrivateKey)
-	conn.WriteJSON(msg)
+	event.Sign(node.Config.PrivateKey)
+	conn.WriteJSON(event)
 
 }
 
@@ -90,34 +92,38 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		message := messaging.Message{}
+		event := event.Event{}
 
 		log.Println("Reading...")
 
-		err := conn.ReadJSON(&message)
+		err := conn.ReadJSON(&event)
 
 		if err != nil && !websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
-			log.Println("Error on message read: ", err)
+			log.Println("Error on event read: ", err)
 			break
 		}
 
-		if !message.Verify() {
-			log.Println("ACHTUNG! Message cannot be verified!")
+		if !event.Verify() {
+			log.Println("ACHTUNG! Event cannot be verified!")
 			continue
 		}
 
-		log.Println("Received message: ", message) // TODO Debug level to logs!
-		ActionsPerMessage[message.Kind](node, &message, r)
+		log.Println("Received event: ", event) // TODO Debug level to logs!
+		ActionsPerEvent[event.Kind](node, &event, r)
 	}
 }
 
-func (node *Node) Connect(msg *messaging.Message, request *http.Request) {
-	if !node.Config.ForceConnectionRequests {
-		log.Printf("{Host: %v, connection: DENIED, reason: Only connections are accepted when ForceConnectionRequests is True }", request.Host)
+func (node *Node) Connect(event *event.Event, request *http.Request) {
+	if node.Config.ForceConnectionRequests {
+		newPeer := peer.FromHost(request.Host)
+		node.AddPeer(newPeer)
 		return
 	}
 
-	newPeer := peer.FromHost(request.Host)
-	node.AddPeer(newPeer)
+	castPoll("y", node.Peers[:], 0.5)
 
+}
+
+func castPoll(s string, peer []peer.Peer, votesQuorum float64) {
+	panic("unimplemented")
 }

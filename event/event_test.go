@@ -1,17 +1,17 @@
-package messaging
+package event
 
 import (
 	"testing"
 )
 
-func TestMsgBuild(t *testing.T) {
-	msg := Message{
+func TestEventBuild(t *testing.T) {
+	event := Event{
 		Content: "random content",
 	}
 
-	actual_json_msg := msg.Build()
+	actual_json_event := event.Build()
 
-	expected_json_msg := `{
+	expected_json_event := `{
   "id": "",
   "pubKey": "",
   "createdAt": 0,
@@ -21,26 +21,26 @@ func TestMsgBuild(t *testing.T) {
   "sig": ""
  }`
 
-	if actual_json_msg != expected_json_msg {
-		t.Error(actual_json_msg, expected_json_msg)
+	if actual_json_event != expected_json_event {
+		t.Error(actual_json_event, expected_json_event)
 	}
 
 }
 
-func TestMsgSign(t *testing.T) {
+func TestEventSign(t *testing.T) {
 	privateKey := "22a47fa09a223f2aa079edf85a7c2d4f8720ee63e502ee2869afab7de234b80c"
 
-	msg := Message{
+	event := Event{
 		Content:   "Random Content",
 		Kind:      0,
 		Tags:      [][]string{[]string{"a tag"}},
 		CreatedAt: 33,
 	}
 
-	msg.Sign(privateKey)
+	event.Sign(privateKey)
 
-	if !msg.Verify() {
-		t.Error("Verification of msg failed!")
+	if !event.Verify() {
+		t.Error("Verification of event failed!")
 	}
 
 }

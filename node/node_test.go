@@ -70,7 +70,6 @@ func TestNodeConnects(t *testing.T) {
 		if len(node2.Peers) != 1 {
 			t.Error("Node2 is not updated with peer from Node1.")
 		}
-
 	}()
 
 	wg.Wait()
@@ -137,7 +136,6 @@ func TestNodesAcceptsConnections(t *testing.T) {
 			if len(node3.Peers) != expected_peers {
 				continue
 			}
-
 		}
 
 		if len(node1.Peers) != expected_peers {
