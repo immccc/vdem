@@ -2,7 +2,7 @@ package node
 
 import (
 	"fmt"
-	"immccc/vdem/event"
+	"immccc/vdem/messaging"
 	"immccc/vdem/peer"
 	"log"
 	http "net/http"
@@ -55,7 +55,7 @@ func (node *Node) Start(wg *sync.WaitGroup) {
 
 	if node.Peers != nil && len(node.Peers) > 0 {
 		//TODO Add host in the config
-		event := event.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
+		event := messaging.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
 		event.Sign(node.Config.PrivateKey)
 		node.Send(&event, &node.Peers[0])
 	}
@@ -69,7 +69,7 @@ func (node *Node) AddPeer(pr peer.Peer) {
 	node.Peers = append(node.Peers, pr)
 }
 
-func (node *Node) Send(event *event.Event, peer *peer.Peer) {
+func (node *Node) Send(event *messaging.Event, peer *peer.Peer) {
 	conn, resp, err := websocket.DefaultDialer.Dial(peer.ToURL(), nil)
 	if err != nil {
 		log.Printf("Cannot send event! %v to peer %v. Error is %v", event, peer.ToURL(), err)
@@ -92,7 +92,7 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		event := event.Event{}
+		event := messaging.Event{}
 
 		log.Println("Reading...")
 
@@ -113,7 +113,7 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (node *Node) Connect(event *event.Event, request *http.Request) {
+func (node *Node) Connect(event *messaging.Event, request *http.Request) {
 	if node.Config.ForceConnectionRequests {
 		newPeer := peer.FromHost(request.Host)
 		node.AddPeer(newPeer)

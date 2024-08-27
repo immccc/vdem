@@ -1,14 +1,14 @@
 package node
 
 import (
-	"immccc/vdem/event"
+	"immccc/vdem/messaging"
 	"net/http"
 )
 
-type actionFunction func(*Node, *event.Event, *http.Request)
+type actionFunction func(*Node, *messaging.Event, *http.Request)
 
 var ActionsPerEvent = map[uint16]actionFunction{
-	event.ConnectionAttemptKind: func(node *Node, event *event.Event, request *http.Request) {
+	messaging.ConnectionAttemptKind: func(node *Node, event *messaging.Event, request *http.Request) {
 		node.Connect(event, request)
 	},
 }
