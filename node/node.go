@@ -104,21 +104,39 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		var message []string
+		var message []any
 		err = json.Unmarshal(rawMessage, &message)
 		if err != nil {
 			log.Printf("Error on unmarshalling message %s", rawMessage)
+			continue
 		}
 
-		if string(message[0]) != messaging.EventMsgType {
+		eventType, eventTypeIsString := message[0].(string)
+		if !eventTypeIsString {
+			log.Println("Message type is not a string: ", eventType)
+			continue
+		}
+
+		if eventType != messaging.EventMsgType {
 			log.Printf("Message of type %v received, whereas only messages of type %v are supported for now", message[0], messaging.EventMsgType)
 			continue
 		}
 
-		var event messaging.Event
-		err = json.Unmarshal([]byte(message[1]), &event)
+		eventAsMap, eventIsMap := message[1].(map[string]interface{})
+		if !eventIsMap {
+			log.Println("Event expected in msg is not a a map!")
+			continue
+		}
+
+		eventAsStr, err := json.Marshal(eventAsMap)
 		if err != nil {
-			log.Println("Error on parsing event from message: ", err)
+			log.Println("Another failure on serialization. This time, map -> stringified json", err)
+		}
+
+		var event messaging.Event
+		err = json.Unmarshal(eventAsStr, &event)
+		if err != nil {
+			log.Println("Error on stringified json -> Event ", err)
 		}
 
 		if !event.Verify() {

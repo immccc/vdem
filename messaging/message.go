@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 )
 
 const (
@@ -19,8 +18,5 @@ func BuildEventMessage(event *Event) []byte {
 		log.Printf("Unable to build Message, can't convert to JSON: %v !", err)
 	}
 
-	eventAsJsonParsed := []byte(strings.ReplaceAll(string(eventAsJson), `"`, `'`))
-
-
-	return []byte(fmt.Sprintf(`["%s", "%s"]`, EventMsgType, eventAsJsonParsed))
+	return []byte(fmt.Sprintf(`["%s", %s]`, EventMsgType, eventAsJson))
 }
