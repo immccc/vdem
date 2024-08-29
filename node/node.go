@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"immccc/vdem/messaging"
 	"immccc/vdem/peer"
@@ -70,6 +71,7 @@ func (node *Node) AddPeer(pr peer.Peer) {
 }
 
 func (node *Node) Send(event *messaging.Event, peer *peer.Peer) {
+	//TODO Connections to last until events are answered!
 	conn, resp, err := websocket.DefaultDialer.Dial(peer.ToURL(), nil)
 	if err != nil {
 		log.Printf("Cannot send event! %v to peer %v. Error is %v", event, peer.ToURL(), err)
@@ -78,7 +80,8 @@ func (node *Node) Send(event *messaging.Event, peer *peer.Peer) {
 	defer conn.Close()
 
 	event.Sign(node.Config.PrivateKey)
-	conn.WriteJSON(event)
+
+	conn.WriteMessage(websocket.TextMessage, messaging.BuildEventMessage(event))
 
 }
 
@@ -92,15 +95,30 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		event := messaging.Event{}
-
 		log.Println("Reading...")
 
-		err := conn.ReadJSON(&event)
+		_, rawMessage, err := conn.ReadMessage()
 
 		if err != nil && !websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
 			log.Println("Error on event read: ", err)
 			break
+		}
+
+		var message []string
+		err = json.Unmarshal(rawMessage, &message)
+		if err != nil {
+			log.Printf("Error on unmarshalling message %s", rawMessage)
+		}
+
+		if string(message[0]) != messaging.EventMsgType {
+			log.Printf("Message of type %v received, whereas only messages of type %v are supported for now", message[0], messaging.EventMsgType)
+			continue
+		}
+
+		var event messaging.Event
+		err = json.Unmarshal([]byte(message[1]), &event)
+		if err != nil {
+			log.Println("Error on parsing event from message: ", err)
 		}
 
 		if !event.Verify() {
