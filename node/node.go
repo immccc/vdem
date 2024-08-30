@@ -71,17 +71,9 @@ func (node *Node) AddPeer(pr peer.Peer) {
 }
 
 func (node *Node) Send(event *messaging.Event, peer *peer.Peer) {
-	//TODO Connections to last until events are answered!
-	conn, resp, err := websocket.DefaultDialer.Dial(peer.ToURL(), nil)
-	if err != nil {
-		log.Printf("Cannot send event! %v to peer %v. Error is %v", event, peer.ToURL(), err)
-		log.Printf("Resp: %v", resp)
-	}
-	defer conn.Close()
 
 	event.Sign(node.Config.PrivateKey)
-
-	conn.WriteMessage(websocket.TextMessage, messaging.BuildEventMessage(event))
+	peer.SendMessage(messaging.BuildEventMessage(event))
 
 }
 
@@ -158,6 +150,12 @@ func (node *Node) Connect(event *messaging.Event, request *http.Request) {
 
 	castPoll("y", node.Peers[:], 0.5)
 
+}
+
+func (node *Node) Close() {
+	for _, pr := range node.Peers {
+		pr.Close()
+	}
 }
 
 func castPoll(s string, peer []peer.Peer, votesQuorum float64) {

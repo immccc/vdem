@@ -42,6 +42,9 @@ func TestNodeConnects(t *testing.T) {
 		},
 	)
 
+	defer node1.Close()
+	defer node2.Close()
+
 	wg.Add(1)
 	go func() {
 
@@ -110,6 +113,10 @@ func TestNodesAcceptsConnections(t *testing.T) {
 		},
 		[]peer.Peer{peerNode1},
 	)
+
+	defer node1.Close()
+	defer node2.Close()
+	defer node3.Close()
 
 	wg.Add(1)
 	go func() {
