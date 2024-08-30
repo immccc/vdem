@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"immccc/vdem/messaging"
 	"immccc/vdem/peer"
@@ -10,12 +11,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
+// A Node acts as a Nostr relay. Holds instances of connected clients and it's in charge of handling
+// and storing status of the decentralized network.
 type Node struct {
 	Config NodeConfig
-	Peers  []peer.Peer
+	Peers  map[string]peer.Peer
 }
 
 var upgrader = websocket.Upgrader{}
@@ -53,21 +57,22 @@ func (node *Node) Start(wg *sync.WaitGroup) {
 		http.Get(fmt.Sprintf("http://localhost:%v/health", node.Config.ServerPort))
 		time.Sleep(time.Second)
 	}
-
-	if node.Peers != nil && len(node.Peers) > 0 {
-		//TODO Add host in the config
-		event := messaging.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
-		event.Sign(node.Config.PrivateKey)
-		node.Send(&event, &node.Peers[0])
-	}
 }
 
-func (node *Node) AddPeer(pr peer.Peer) {
+func (node *Node) AddPeer(pr *peer.Peer, connect bool) {
 	if node.Peers == nil {
-		node.Peers = make([]peer.Peer, 0)
+		node.Peers = make(map[string]peer.Peer)
 	}
 
-	node.Peers = append(node.Peers, pr)
+	node.Peers[pr.ToURL()] = *pr
+
+	if !connect {
+		return
+	}
+
+	event := messaging.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
+	event.Sign(node.Config.PrivateKey)
+	node.Send(&event, pr)
 }
 
 func (node *Node) Send(event *messaging.Event, peer *peer.Peer) {
@@ -109,46 +114,59 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if eventType != messaging.EventMsgType {
-			log.Printf("Message of type %v received, whereas only messages of type %v are supported for now", message[0], messaging.EventMsgType)
+		if _, existsKey := ActionsPerMessage[eventType]; !existsKey {
+			log.Printf("Received msg of type %s is not implemented and can't be processed!", eventType)
 			continue
 		}
-
-		eventAsMap, eventIsMap := message[1].(map[string]interface{})
-		if !eventIsMap {
-			log.Println("Event expected in msg is not a a map!")
-			continue
-		}
-
-		eventAsStr, err := json.Marshal(eventAsMap)
-		if err != nil {
-			log.Println("Another failure on serialization. This time, map -> stringified json", err)
-		}
-
-		var event messaging.Event
-		err = json.Unmarshal(eventAsStr, &event)
-		if err != nil {
-			log.Println("Error on stringified json -> Event ", err)
-		}
-
-		if !event.Verify() {
-			log.Println("ACHTUNG! Event cannot be verified!")
-			continue
-		}
-
-		log.Println("Received event: ", event) // TODO Debug level to logs!
-		ActionsPerEvent[event.Kind](node, &event, r)
+		ActionsPerMessage[eventType](node, message[1:], r)
 	}
 }
 
+func (node *Node) ParseEvent(rawEvent *any, r *http.Request) error {
+	eventAsMap, eventIsMap := (*rawEvent).(map[string]interface{})
+	if !eventIsMap {
+		return errors.New("event expected in msg is not a a map")
+
+	}
+
+	eventAsStr, err := json.Marshal(eventAsMap)
+	if err != nil {
+		return err
+	}
+
+	var event messaging.Event
+	err = json.Unmarshal(eventAsStr, &event)
+	if err != nil {
+		return err
+	}
+
+	if !event.Verify() {
+		return errors.New("cannot verify and trust message from event")
+
+	}
+
+	log.Println("Received event: ", event) // TODO Debug level to logs!
+	ActionsPerEvent[event.Kind](node, &event, r)
+
+	return nil
+}
+
 func (node *Node) Connect(event *messaging.Event, request *http.Request) {
+	pr := peer.FromHost(request.Host)
+
 	if node.Config.ForceConnectionRequests {
-		newPeer := peer.FromHost(request.Host)
-		node.AddPeer(newPeer)
+		node.AddPeer(&pr, false)
 		return
 	}
 
-	castPoll("y", node.Peers[:], 0.5)
+	// TODO Consensus is just one way to accept new connections, and a bit naive.
+	// Certificates emitted by networks themselves are a better way to connect to, 
+	// but it's a good way to start testing voting protocol.
+	// TODO Also refactor to a separated function
+	u := uuid.New()
+	for _, prDest := range node.Peers {
+		prDest.SendMessage(messaging.BuildReqMessage(u.String()))
+	}
 
 }
 
@@ -156,8 +174,4 @@ func (node *Node) Close() {
 	for _, pr := range node.Peers {
 		pr.Close()
 	}
-}
-
-func castPoll(s string, peer []peer.Peer, votesQuorum float64) {
-	panic("unimplemented")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// A Peer acts as a Nostr client. Clients are part of nodes and communicates with them.
 type Peer struct {
 	Port int
 	Host string

@@ -24,7 +24,6 @@ func TestNodeConnects(t *testing.T) {
 			ServerPort:              portNode1,
 			ForceConnectionRequests: true,
 		},
-		nil,
 	)
 
 	node2 := createAndStartNode(
@@ -34,16 +33,18 @@ func TestNodeConnects(t *testing.T) {
 			ServerPort:              portNode2,
 			ForceConnectionRequests: true,
 		},
-		[]peer.Peer{
-			{
-				Port: portNode1,
-				Host: "localhost",
-			},
-		},
 	)
 
 	defer node1.Close()
 	defer node2.Close()
+
+	node2.AddPeer(
+		&peer.Peer{
+			Port: portNode1,
+			Host: "localhost",
+		},
+		true,
+	)
 
 	wg.Add(1)
 	go func() {
@@ -93,7 +94,6 @@ func TestNodesAcceptsConnections(t *testing.T) {
 			PubKey:     "1BE5XHY3AAeZ72pBbKggjCeUxRAQk8XY6x",
 			ServerPort: portNode1,
 		},
-		nil,
 	)
 	node2 := createAndStartNode(
 		&wg,
@@ -102,8 +102,8 @@ func TestNodesAcceptsConnections(t *testing.T) {
 			PubKey:     "1FLYde1vFvtNDiasdxkC9jEBH7v69nKa1x",
 			ServerPort: portNode2,
 		},
-		[]peer.Peer{peerNode1},
 	)
+
 	node3 := createAndStartNode(
 		&wg,
 		&NodeConfig{
@@ -111,12 +111,14 @@ func TestNodesAcceptsConnections(t *testing.T) {
 			PubKey:     "123CjemJyn9ZPdQXRGDbF3kSdhQKCELSFT",
 			ServerPort: portNode3,
 		},
-		[]peer.Peer{peerNode1},
 	)
-
+	
 	defer node1.Close()
 	defer node2.Close()
 	defer node3.Close()
+
+	node2.AddPeer(&peerNode1, true)
+	node3.AddPeer(&peerNode1, true)
 
 	wg.Add(1)
 	go func() {
@@ -163,12 +165,8 @@ func TestNodesAcceptsConnections(t *testing.T) {
 
 }
 
-func createAndStartNode(wg *sync.WaitGroup, config *NodeConfig, peers []peer.Peer) *Node {
+func createAndStartNode(wg *sync.WaitGroup, config *NodeConfig) *Node {
 	node := Node{Config: *config}
-
-	for _, pr := range peers {
-		node.AddPeer(pr)
-	}
 
 	wg.Add(1)
 	go node.Start(wg)
