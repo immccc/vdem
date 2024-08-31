@@ -80,7 +80,7 @@ func TestNodeConnects(t *testing.T) {
 
 }
 
-func TestNodesAcceptsConnections(t *testing.T) {
+func TestNodesPerformVoting(t *testing.T) {
 	peerNode1 := peer.Peer{
 		Port: portNode1,
 		Host: "localhost",
@@ -90,9 +90,10 @@ func TestNodesAcceptsConnections(t *testing.T) {
 	node1 := createAndStartNode(
 		&wg,
 		&NodeConfig{
-			PrivateKey: "KxLaBhSXFaosxuxXzhmTsGoLd6FEA9g3J9coZaY87smykZ6JC9je",
-			PubKey:     "1BE5XHY3AAeZ72pBbKggjCeUxRAQk8XY6x",
-			ServerPort: portNode1,
+			PrivateKey:              "KxLaBhSXFaosxuxXzhmTsGoLd6FEA9g3J9coZaY87smykZ6JC9je",
+			PubKey:                  "1BE5XHY3AAeZ72pBbKggjCeUxRAQk8XY6x",
+			ServerPort:              portNode1,
+			ForceConnectionRequests: true,
 		},
 	)
 	node2 := createAndStartNode(
@@ -112,7 +113,7 @@ func TestNodesAcceptsConnections(t *testing.T) {
 			ServerPort: portNode3,
 		},
 	)
-	
+
 	defer node1.Close()
 	defer node2.Close()
 	defer node3.Close()
@@ -162,6 +163,20 @@ func TestNodesAcceptsConnections(t *testing.T) {
 	}()
 
 	wg.Wait()
+
+	// TODO Remove!
+	t.Error("Test to be written yet!")
+
+	// TODO what to test
+	// node 2 requests voting
+	// nodes 1 and 2 accepts voting
+	// node 2 emits event with voting options to 1 and 2
+	// all nodes casts their vote
+	// One node does not vote has it hits expiration time. It's counted as "-"
+	// Rest of nodes emit their options before timeout
+	// In voting backlog, results are stored for all nodes accepted in the network,
+	// and those that didn't accept to vote are tracked as "NO SHOW".
+	// Backlog is sent to the whole network.
 
 }
 

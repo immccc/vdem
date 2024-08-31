@@ -151,22 +151,16 @@ func (node *Node) ParseEvent(rawEvent *any, r *http.Request) error {
 	return nil
 }
 
-func (node *Node) Connect(event *messaging.Event, request *http.Request) {
+func (node *Node) Connect(event *messaging.Event, request *http.Request) error{
 	pr := peer.FromHost(request.Host)
 
 	if node.Config.ForceConnectionRequests {
 		node.AddPeer(&pr, false)
-		return
+		return nil
 	}
 
-	// TODO Consensus is just one way to accept new connections, and a bit naive.
-	// Certificates emitted by networks themselves are a better way to connect to, 
-	// but it's a good way to start testing voting protocol.
-	// TODO Also refactor to a separated function
-	u := uuid.New()
-	for _, prDest := range node.Peers {
-		prDest.SendMessage(messaging.BuildReqMessage(u.String()))
-	}
+	// TODO Implement connection to networks by trusted certificates
+	return errors.New("trusted connections not implemented yet")
 
 }
 
