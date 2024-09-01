@@ -1,6 +1,6 @@
 module immccc/vdem
 
-go 1.19
+go 1.23
 
 require github.com/decred/dcrd/dcrec/secp256k1 v1.0.4
 

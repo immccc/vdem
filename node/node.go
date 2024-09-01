@@ -11,15 +11,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 // A Node acts as a Nostr relay. Holds instances of connected clients and it's in charge of handling
 // and storing status of the decentralized network.
 type Node struct {
-	Config NodeConfig
-	Peers  map[string]peer.Peer
+	Config        NodeConfig
+	PeersByPubKey map[string]peer.Peer
+
+	eventsWaitingForConfirmationById   map[string]messaging.Event
+	eventsWaitingForRegisterSenderById map[string][]messaging.Event
 }
 
 var upgrader = websocket.Upgrader{}
@@ -29,9 +31,7 @@ func (node *Node) Start(wg *sync.WaitGroup) {
 		defer wg.Done()
 	}
 
-	if node.Peers == nil || len(node.Peers) == 0 {
-		log.Println("Node has started without peers, wont be listening for udpates!")
-	}
+	log.Printf("node: %s, peers: %d", node.Config.PubKey, len(node.PeersByPubKey))
 
 	mux := http.NewServeMux()
 	serverStarted := false
@@ -48,7 +48,7 @@ func (node *Node) Start(wg *sync.WaitGroup) {
 		err := http.ListenAndServe(fmt.Sprintf(":%v", node.Config.ServerPort), mux)
 
 		if err != nil {
-			log.Fatalf("Error on server: %v", err)
+			log.Fatalf("node: %s, err: %v", node.Config.PubKey, err)
 		}
 	}()
 
@@ -59,27 +59,75 @@ func (node *Node) Start(wg *sync.WaitGroup) {
 	}
 }
 
-func (node *Node) AddPeer(pr *peer.Peer, connect bool) {
-	if node.Peers == nil {
-		node.Peers = make(map[string]peer.Peer)
+func (node *Node) AddPeer(pr *peer.Peer, connect bool) error {
+	if node.PeersByPubKey == nil {
+		node.PeersByPubKey = make(map[string]peer.Peer)
 	}
 
-	node.Peers[pr.ToURL()] = *pr
+	node.PeersByPubKey[pr.PubKey] = *pr
+	log.Printf("node: %s, peer: %s, status: ADDED", node.Config.PubKey, pr.PubKey)
+	log.Printf("node: %s, peers: %d", node.Config.PubKey, len(node.PeersByPubKey))
 
 	if !connect {
-		return
+		return nil
 	}
 
 	event := messaging.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
 	event.Sign(node.Config.PrivateKey)
-	node.Send(&event, pr)
+	err := node.Send(&event)
+
+	if err != nil {
+		return err
+	}
+
+	log.Printf("node: %s, peer: %s, status: CONNECTION_PENDING", node.Config.PubKey, pr.PubKey)
+
+	return nil
 }
 
-func (node *Node) Send(event *messaging.Event, peer *peer.Peer) {
+func (node *Node) Send(event *messaging.Event) error {
 
 	event.Sign(node.Config.PrivateKey)
-	peer.SendMessage(messaging.BuildEventMessage(event))
+	if len(node.PeersByPubKey) == 0 {
+		return errors.New("no peers to send request")
+	}
 
+	for _, peer := range node.PeersByPubKey {
+		peer.SendMessage(messaging.BuildEventMessage(event))
+	}
+
+	node.addEventAwaitingConfirmation(event)
+
+	return nil
+}
+
+func (node *Node) addEventAwaitingConfirmation(event *messaging.Event) {
+	if node.eventsWaitingForConfirmationById == nil {
+		node.eventsWaitingForConfirmationById = make(map[string]messaging.Event)
+	}
+
+	node.eventsWaitingForConfirmationById[event.Id] = *event
+
+	log.Printf("event: %s, kind: %d, status: PENDING", event.Id, event.Kind)
+}
+
+func (node *Node) handleEventPeerExistence(event *messaging.Event) bool {
+	_, existPeer := node.PeersByPubKey[event.PubKey]
+	if existPeer {
+		return true
+	}
+
+	if node.eventsWaitingForRegisterSenderById == nil {
+		node.eventsWaitingForRegisterSenderById = make(map[string][]messaging.Event)
+	}
+
+	if node.eventsWaitingForRegisterSenderById[event.PubKey] == nil {
+		node.eventsWaitingForRegisterSenderById[event.PubKey] = make([]messaging.Event, 1)
+	}
+
+	node.eventsWaitingForRegisterSenderById[event.PubKey] = append(node.eventsWaitingForRegisterSenderById[event.PubKey], *event)
+
+	return false
 }
 
 func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
@@ -92,8 +140,6 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		log.Println("Reading...")
-
 		_, rawMessage, err := conn.ReadMessage()
 
 		if err != nil && !websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
@@ -104,18 +150,18 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 		var message []any
 		err = json.Unmarshal(rawMessage, &message)
 		if err != nil {
-			log.Printf("Error on unmarshalling message %s", rawMessage)
+			log.Printf("node: %s, message: %s, %v", node.Config.PubKey, rawMessage, err)
 			continue
 		}
 
 		eventType, eventTypeIsString := message[0].(string)
 		if !eventTypeIsString {
-			log.Println("Message type is not a string: ", eventType)
+			log.Printf("node: %s, eventType: %v, error: not a string", node.Config.PubKey, eventType)
 			continue
 		}
 
 		if _, existsKey := ActionsPerMessage[eventType]; !existsKey {
-			log.Printf("Received msg of type %s is not implemented and can't be processed!", eventType)
+			log.Printf("node: %s, eventType: %v, error: action not implemented for this kind of message", node.Config.PubKey, eventType)
 			continue
 		}
 		ActionsPerMessage[eventType](node, message[1:], r)
@@ -145,27 +191,66 @@ func (node *Node) ParseEvent(rawEvent *any, r *http.Request) error {
 
 	}
 
-	log.Println("Received event: ", event) // TODO Debug level to logs!
-	ActionsPerEvent[event.Kind](node, &event, r)
+	//Enqueue event if source is not yet registered
+	existsPeer := node.handleEventPeerExistence(&event)
+	if !existsPeer {
+		log.Printf("node: %s, event: %s, peer: %s, status: FROM_UNKNOWN_PEER", node.Config.PubKey, event.Id, event.PubKey)
+		return nil
+	}
+
+	//Confirm received event
+	err = node.ConfirmEvent(&event)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (node *Node) Connect(event *messaging.Event, request *http.Request) error{
-	pr := peer.FromHost(request.Host)
-
-	if node.Config.ForceConnectionRequests {
-		node.AddPeer(&pr, false)
-		return nil
+func (node *Node) ConfirmEvent(event *messaging.Event) error {
+	if !node.Config.ForceAcknowledge {
+		return errors.New("acknowledge of an event upon criteria is not implemented yet")
 	}
 
-	// TODO Implement connection to networks by trusted certificates
-	return errors.New("trusted connections not implemented yet")
+	log.Printf("node: %s, event: %s, status: ACCEPTED", node.Config.PubKey, event.Id) // TODO Debug level to logs!
+	eventAction, err := node.getActionsPerEvent(event)
+	if err != nil {
+		return err
+	}
 
+	err = eventAction(node, event)
+	if err != nil {
+		log.Printf("node: %s, event: %s, status: ERROR, err: %v", node.Config.PubKey, event.Id, err)
+	} else {
+		log.Printf("node: %s, event: %s, status: COMPLETED", node.Config.PubKey, event.Id)
+	}
+
+	peerDest := node.PeersByPubKey[event.PubKey]
+	peerDest.SendMessage(messaging.BuildOkMessage(event.Id, true))
+
+	// TODO Store non replaceable events as NIP-01 says
+	return nil
+}
+
+func (node *Node) ChangeEventAcceptance(eventId string, accepted bool) error {
+	_, eventFound := node.eventsWaitingForConfirmationById[eventId]
+	if !eventFound {
+		return errors.New("event is not registered amongst waiting ones")
+	}
+
+	if !accepted {
+		log.Printf("node: %s, event: %s, status: DENIED", node.Config.PubKey, eventId)
+	} else {
+		log.Printf("node: %s, event: %s, status: ACCEPTED", node.Config.PubKey, eventId)
+	}
+
+	delete(node.eventsWaitingForConfirmationById, eventId)
+
+	return nil
 }
 
 func (node *Node) Close() {
-	for _, pr := range node.Peers {
+	for _, pr := range node.PeersByPubKey {
 		pr.Close()
 	}
 }

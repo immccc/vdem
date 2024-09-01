@@ -27,9 +27,9 @@ func BuildOkMessage(eventId string, accepted bool) []byte {
 	if accepted {
 		accepted_str = "true"
 	}
-	return []byte(fmt.Sprintf(`["%s", %s, %s]`, OkType, eventId, accepted_str))
+	return []byte(fmt.Sprintf(`["%s", "%s", %s]`, OkType, eventId, accepted_str))
 }
 
 func BuildReqMessage(subscriptionId string) []byte {
-	return []byte(fmt.Sprintf(`["%s", %s]`, ReqMsgType, subscriptionId))
+	return []byte(fmt.Sprintf(`["%s", "%s"]`, ReqMsgType, subscriptionId))
 }

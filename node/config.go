@@ -5,4 +5,5 @@ type NodeConfig struct {
 	PubKey                  string
 	ServerPort              int
 	ForceConnectionRequests bool
+	ForceAcknowledge		bool
 }

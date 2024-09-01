@@ -11,25 +11,31 @@ import (
 
 // A Peer acts as a Nostr client. Clients are part of nodes and communicates with them.
 type Peer struct {
-	Port int
-	Host string
-	conn *websocket.Conn
+	PubKey string
+	Port   int
+	Host   string
+	conn   *websocket.Conn
 }
 
 func (peer *Peer) ToURL() string {
 	return fmt.Sprintf("ws://%v:%v", peer.Host, peer.Port)
 }
 
-func FromHost(url string) Peer {
+func New(pubKey string, url string) Peer {
 	hostAndPort := strings.Split(url, ":")
 
 	host := hostAndPort[0]
+	if len(host) == 0 {
+		host = "localhost"
+	}
+
 	portStr := hostAndPort[1]
 	port, _ := strconv.Atoi(portStr)
 
 	return Peer{
-		Host: host,
-		Port: port,
+		PubKey: pubKey,
+		Host:   host,
+		Port:   port,
 	}
 }
 
@@ -49,7 +55,7 @@ func (peer *Peer) getConnection() *websocket.Conn {
 
 func (peer *Peer) SendMessage(msg []byte) {
 	conn := peer.getConnection()
-	conn.WriteMessage(websocket.TextMessage, msg)
+	conn.WriteMessage(websocket.TextMessage, msg[:])
 }
 
 func (peer *Peer) Close() {

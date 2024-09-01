@@ -10,8 +10,8 @@ func BuildConnectionAttemptEvent(pubKey string, host string, port int) Event {
 
 	event := Event{
 		Kind:    ConnectionAttemptKind,
-		Tags:    [][]string{{TagTypeUser, pubKey}},
-		Content: fmt.Sprintf("ws://%v:%v", host, port),
+		Tags:    [][]string{{TagTypeUser, pubKey, fmt.Sprintf("%v:%v", host, port)}},
+		Content: "Connection attempt",
 	}
 
 	return event
