@@ -12,6 +12,7 @@ const (
 func BuildOtherPeersOnNetworkNotificationEvent(prs *iter.Seq[peer.Peer]) Event {
 
 	tags := make([]([]string), 0)
+
 	for pr := range *prs {
 		tag := []string{TagTypeUser, pr.PubKey, pr.ToURL()}
 		tags = append(tags, tag)

@@ -24,9 +24,14 @@ type Node struct {
 	eventsWaitingForRegisterSenderById map[string][]messaging.Event
 }
 
+var whitelisted_events_for_unregistered_clients = map[uint16]bool{
+	messaging.ConnectionAttemptKind: true,
+}
+
 var upgrader = websocket.Upgrader{}
 
 func (node *Node) Start(wg *sync.WaitGroup) {
+
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -117,6 +122,10 @@ func (node *Node) handleEventPeerExistence(event *messaging.Event) bool {
 		return true
 	}
 
+	if whitelisted_events_for_unregistered_clients[event.Kind] {
+		return true
+	}
+
 	if node.eventsWaitingForRegisterSenderById == nil {
 		node.eventsWaitingForRegisterSenderById = make(map[string][]messaging.Event)
 	}
@@ -154,17 +163,17 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		eventType, eventTypeIsString := message[0].(string)
-		if !eventTypeIsString {
-			log.Printf("node: %s, eventType: %v, error: not a string", node.Config.PubKey, eventType)
+		messageType, messageTypeIsString := message[0].(string)
+		if !messageTypeIsString {
+			log.Printf("node: %s, messageType: %v, error: not a string", node.Config.PubKey, messageType)
 			continue
 		}
 
-		if _, existsKey := ActionsPerMessage[eventType]; !existsKey {
-			log.Printf("node: %s, eventType: %v, error: action not implemented for this kind of message", node.Config.PubKey, eventType)
+		if _, existsKey := ActionsPerMessage[messageType]; !existsKey {
+			log.Printf("node: %s, messageType: %v, error: action not implemented for this kind of message", node.Config.PubKey, messageType)
 			continue
 		}
-		ActionsPerMessage[eventType](node, message[1:], r)
+		ActionsPerMessage[messageType](node, message[1:], r)
 	}
 }
 

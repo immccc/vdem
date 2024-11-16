@@ -10,7 +10,7 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/schnorr"
 )
 
-type EventType string
+type EventType uint16
 
 const (
 	TagTypeUser = "p"
