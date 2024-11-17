@@ -119,7 +119,7 @@ func TestNodesConnectsOnNetworkOfMany(t *testing.T) {
 		&wg,
 		&NodeConfig{
 			PrivateKey:              "L3FRLDYALav5dKi6MgEKvfRaAP3jgeatRnU44uopzNvFyetW55E4",
-			PubKey:                  "29979a9c18820104050fb337e6bb4e229f138f377996c6dbffe1857d6c5d52eb6",
+			PubKey:                  "029979a9c18820104050fb337e6bb4e229f138f377996c6dbffe1857d6c5d52eb6",
 			ServerPort:              portNode3,
 			ForceConnectionRequests: true,
 			ForceAcknowledge:        true,

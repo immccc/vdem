@@ -151,9 +151,15 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, rawMessage, err := conn.ReadMessage()
 
-		if err != nil && !websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
-			log.Println("Error on event read: ", err)
-			break
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
+				log.Println("Unexpected error on event read: ", err)
+				break
+			} else if websocket.IsUnexpectedCloseError(err) {
+				log.Println("Closed connection: ", err)
+				break
+			}
+			continue
 		}
 
 		var message []any
