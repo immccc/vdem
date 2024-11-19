@@ -22,12 +22,6 @@ func (node *Node) getActionsPerEvent(event *messaging.Event) (actionFunction, er
 			pr := peer.New(event.Tags[0][1], event.Tags[0][2])
 			node.AddPeer(&pr, false)
 
-			prs := maps.Values(node.PeersByPubKey)
-
-			networkEvent := messaging.BuildOtherPeersOnNetworkNotificationEvent(&prs)
-			networkEvent.Sign(node.Config.PrivateKey)
-			node.Send(&networkEvent)
-
 			return nil
 		}, nil
 	case messaging.OtherPeersOnNetworkNotificationKind:
@@ -61,5 +55,5 @@ func (node *Node) getActionsPerEvent(event *messaging.Event) (actionFunction, er
 
 	}
 
-	return nil, errors.New("Unregistered event kind")
+	return nil, errors.New("unregistered event kind")
 }

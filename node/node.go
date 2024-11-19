@@ -7,7 +7,9 @@ import (
 	"immccc/vdem/messaging"
 	"immccc/vdem/peer"
 	"log"
+	"maps"
 	http "net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -77,6 +79,12 @@ func (node *Node) AddPeer(pr *peer.Peer, connect bool) error {
 		return nil
 	}
 
+
+	// XXX CONTINUE FROM HERE!
+	prs := maps.Values(node.PeersByPubKey)
+	networkEvent := messaging.BuildOtherPeersOnNetworkNotificationEvent(&prs)
+	node.Send(&networkEvent)
+
 	event := messaging.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
 	event.Sign(node.Config.PrivateKey)
 	err := node.Send(&event)
@@ -99,10 +107,13 @@ func (node *Node) Send(event *messaging.Event) error {
 
 	for _, peer := range node.PeersByPubKey {
 		peer.SendMessage(messaging.BuildEventMessage(event))
+
 	}
 
-	node.addEventAwaitingConfirmation(event)
+	peerPubKeys := slices.Collect(maps.Keys(node.PeersByPubKey))
+	log.Printf("node: %v, event: %v, kind: %d, status: SENT, peers: %v", node.Config.PubKey, event.Id, event.Kind, peerPubKeys)
 
+	node.addEventAwaitingConfirmation(event)
 	return nil
 }
 
@@ -113,7 +124,7 @@ func (node *Node) addEventAwaitingConfirmation(event *messaging.Event) {
 
 	node.eventsWaitingForConfirmationById[event.Id] = *event
 
-	log.Printf("event: %s, kind: %d, status: PENDING", event.Id, event.Kind)
+	log.Printf("node: %s, event: %s, kind: %d, status: PENDING", node.Config.PubKey, event.Id, event.Kind)
 }
 
 func (node *Node) handleEventPeerExistence(event *messaging.Event) bool {
@@ -156,7 +167,7 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 				log.Println("Unexpected error on event read: ", err)
 				break
 			} else if websocket.IsUnexpectedCloseError(err) {
-				log.Println("Closed connection: ", err)
+				log.Printf("node: %s, message: CLOSED_CONNECTION, error: %s", node.Config.PubKey, err)
 				break
 			}
 			continue
@@ -165,7 +176,7 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 		var message []any
 		err = json.Unmarshal(rawMessage, &message)
 		if err != nil {
-			log.Printf("node: %s, message: %s, %v", node.Config.PubKey, rawMessage, err)
+			log.Printf("node: %s, message: %s, error: %v", node.Config.PubKey, rawMessage, err)
 			continue
 		}
 
