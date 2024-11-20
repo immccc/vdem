@@ -2,18 +2,17 @@ package messaging
 
 import (
 	"immccc/vdem/peer"
-	"iter"
 )
 
 const (
 	OtherPeersOnNetworkNotificationKind uint16 = 1001
 )
 
-func BuildOtherPeersOnNetworkNotificationEvent(prs *iter.Seq[peer.Peer]) Event {
+func BuildOtherPeersOnNetworkNotificationEvent(prs []peer.Peer) Event {
 
 	tags := make([]([]string), 0)
 
-	for pr := range *prs {
+	for _, pr := range prs {
 		tag := []string{TagTypeUser, pr.PubKey, pr.ToURL()}
 		tags = append(tags, tag)
 	}

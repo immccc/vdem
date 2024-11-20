@@ -21,7 +21,15 @@ func (peer *Peer) ToURL() string {
 	return fmt.Sprintf("ws://%v:%v", peer.Host, peer.Port)
 }
 
-func New(pubKey string, url string) Peer {
+func New(pubKey string, url string, port *int) Peer {
+	if port != nil {
+		return Peer {
+			PubKey: pubKey,
+			Host: url,
+			Port: *port,
+		}
+	}
+
 	hostAndPort := strings.Split(url, ":")
 
 	host := hostAndPort[0]
@@ -30,14 +38,16 @@ func New(pubKey string, url string) Peer {
 	}
 
 	portStr := hostAndPort[1]
-	port, _ := strconv.Atoi(portStr)
+	portFromUrl, _ := strconv.Atoi(portStr)
 
 	return Peer{
 		PubKey: pubKey,
 		Host:   host,
-		Port:   port,
+		Port:   portFromUrl,
 	}
 }
+
+
 
 func (peer *Peer) getConnection() *websocket.Conn {
 	if peer.conn == nil {

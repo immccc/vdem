@@ -12,6 +12,7 @@ const (
 	portNode2   int    = 3395
 	portNode3   int    = 3396
 	pubKeyNode1 string = "035653c0e9250de356c13e11dc4887e9d07f571c7fc9d761e8d8fdd6ad231c388c"
+	host		string = "localhost"
 )
 
 func TestNodeConnects(t *testing.T) {
@@ -23,6 +24,7 @@ func TestNodeConnects(t *testing.T) {
 			PrivateKey:              "Kx67AX7YZ6VCvBR7qGz35wxVaRku4Gvg5Pa445TEGonWYCG8AZmL",
 			PubKey:                  pubKeyNode1, // TODO PubKey to be generated, and not manually assigned?
 			ServerPort:              portNode1,
+			ServerPublicHost:		 host,
 			ForceConnectionRequests: true,
 			ForceAcknowledge:        true,
 		},
@@ -33,6 +35,7 @@ func TestNodeConnects(t *testing.T) {
 			PrivateKey:              "KxLaBhSXFaosxuxXzhmTsGoLd6FEA9g3J9coZaY87smykZ6JC9je",
 			PubKey:                  "0319b82bc08e8dd49f089ff839bada602c2c42e4166f4916924464c63b6d3b4c31",
 			ServerPort:              portNode2,
+			ServerPublicHost:		 host,
 			ForceConnectionRequests: true,
 			ForceAcknowledge:        true,
 		},
@@ -90,7 +93,7 @@ func TestNodesConnectsOnNetworkOfMany(t *testing.T) {
 	peerNode1 := peer.Peer{
 		PubKey: pubKeyNode1,
 		Port:   portNode1,
-		Host:   "localhost",
+		Host:   host,
 	}
 
 	var wg sync.WaitGroup
@@ -100,6 +103,7 @@ func TestNodesConnectsOnNetworkOfMany(t *testing.T) {
 			PrivateKey:              "KxLaBhSXFaosxuxXzhmTsGoLd6FEA9g3J9coZaY87smykZ6JC9je",
 			PubKey:                  pubKeyNode1,
 			ServerPort:              portNode1,
+			ServerPublicHost:		 host,
 			ForceConnectionRequests: true,
 			ForceAcknowledge:        true,
 		},
@@ -110,6 +114,7 @@ func TestNodesConnectsOnNetworkOfMany(t *testing.T) {
 			PrivateKey:              "KxLaBhSXFaosxuxXzhmTsGoLd6FEA9g3J9coZaY87smykZ6JC9je",
 			PubKey:                  "0319b82bc08e8dd49f089ff839bada602c2c42e4166f4916924464c63b6d3b4c31",
 			ServerPort:              portNode2,
+			ServerPublicHost:		 host,
 			ForceConnectionRequests: true,
 			ForceAcknowledge:        true,
 		},
@@ -121,6 +126,7 @@ func TestNodesConnectsOnNetworkOfMany(t *testing.T) {
 			PrivateKey:              "L3FRLDYALav5dKi6MgEKvfRaAP3jgeatRnU44uopzNvFyetW55E4",
 			PubKey:                  "029979a9c18820104050fb337e6bb4e229f138f377996c6dbffe1857d6c5d52eb6",
 			ServerPort:              portNode3,
+			ServerPublicHost:		 host,
 			ForceConnectionRequests: true,
 			ForceAcknowledge:        true,
 		},

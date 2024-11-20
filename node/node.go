@@ -28,6 +28,7 @@ type Node struct {
 
 var whitelisted_events_for_unregistered_clients = map[uint16]bool{
 	messaging.ConnectionAttemptKind: true,
+	messaging.OtherPeersOnNetworkNotificationKind: true, // TODO OUT!! Add a mechanism to validate a message comes from  same network
 }
 
 var upgrader = websocket.Upgrader{}
@@ -71,19 +72,19 @@ func (node *Node) AddPeer(pr *peer.Peer, connect bool) error {
 		node.PeersByPubKey = make(map[string]peer.Peer)
 	}
 
+	if _, alreadyExistsPeer := node.PeersByPubKey[pr.PubKey]; alreadyExistsPeer {
+		return nil
+	}
+
 	node.PeersByPubKey[pr.PubKey] = *pr
 	log.Printf("node: %s, peer: %s, status: ADDED", node.Config.PubKey, pr.PubKey)
 	log.Printf("node: %s, peers: %d", node.Config.PubKey, len(node.PeersByPubKey))
 
+	// TODO rename "connect" param
 	if !connect {
 		return nil
 	}
 
-
-	// XXX CONTINUE FROM HERE!
-	prs := maps.Values(node.PeersByPubKey)
-	networkEvent := messaging.BuildOtherPeersOnNetworkNotificationEvent(&prs)
-	node.Send(&networkEvent)
 
 	event := messaging.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
 	event.Sign(node.Config.PrivateKey)
@@ -253,6 +254,8 @@ func (node *Node) ConfirmEvent(event *messaging.Event) error {
 
 	peerDest := node.PeersByPubKey[event.PubKey]
 	peerDest.SendMessage(messaging.BuildOkMessage(event.Id, true))
+
+	log.Printf("node: %s, event: %s, peer: %s, status: CONFIRMED", node.Config.PubKey, event.Id, event.PubKey)
 
 	// TODO Store non replaceable events as NIP-01 says
 	return nil
