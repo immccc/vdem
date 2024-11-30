@@ -27,7 +27,7 @@ type Node struct {
 }
 
 var whitelisted_events_for_unregistered_clients = map[uint16]bool{
-	messaging.ConnectionAttemptKind: true,
+	messaging.ConnectionAttemptKind:               true,
 	messaging.OtherPeersOnNetworkNotificationKind: true, // TODO OUT!! Add a mechanism to validate a message comes from  same network
 }
 
@@ -84,7 +84,6 @@ func (node *Node) AddPeer(pr *peer.Peer, connect bool) error {
 	if !connect {
 		return nil
 	}
-
 
 	event := messaging.BuildConnectionAttemptEvent(node.Config.PubKey, "", node.Config.ServerPort)
 	event.Sign(node.Config.PrivateKey)
@@ -171,6 +170,7 @@ func (node *Node) serveWs(w http.ResponseWriter, r *http.Request) {
 				log.Printf("node: %s, message: CLOSED_CONNECTION, error: %s", node.Config.PubKey, err)
 				break
 			}
+			// TODO Disconnect peer in case it's disconnected
 			continue
 		}
 
