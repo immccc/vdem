@@ -2,7 +2,7 @@ package messaging
 
 
 const (
-	OpenPollKind uint16 = 1003
+	OpenPollKind uint16 = 10003
 )
 
 func OpenPollEvent(description string, options []string) Event {

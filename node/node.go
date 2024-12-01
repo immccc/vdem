@@ -248,6 +248,7 @@ func (node *Node) ConfirmEvent(event *messaging.Event) error {
 	err = eventAction(node, event)
 	if err != nil {
 		log.Printf("node: %s, event: %s, status: ERROR, err: %v", node.Config.PubKey, event.Id, err)
+		return err
 	} else {
 		log.Printf("node: %s, event: %s, status: COMPLETED", node.Config.PubKey, event.Id)
 	}
