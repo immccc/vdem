@@ -33,7 +33,7 @@ func TestEventSign(t *testing.T) {
 	event := Event{
 		Content:   "Random Content",
 		Kind:      0,
-		Tags:      [][]string{[]string{"a tag"}},
+		Tags:      [][]string{{"a tag"}},
 		CreatedAt: 33,
 	}
 

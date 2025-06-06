@@ -19,7 +19,7 @@ func BuildEventMessage(event *Event) []byte {
 		log.Printf("Unable to build Message, can't convert to JSON: %v !", err)
 	}
 
-	return []byte(fmt.Sprintf(`["%s", %s]`, EventMsgType, eventAsJson))
+	return fmt.Appendf(nil, `["%s", %s]`, EventMsgType, eventAsJson)
 }
 
 func BuildOkMessage(eventId string, accepted bool) []byte {
@@ -27,9 +27,9 @@ func BuildOkMessage(eventId string, accepted bool) []byte {
 	if accepted {
 		accepted_str = "true"
 	}
-	return []byte(fmt.Sprintf(`["%s", "%s", %s]`, OkType, eventId, accepted_str))
+	return fmt.Appendf(nil, `["%s", "%s", %s]`, OkType, eventId, accepted_str)
 }
 
 func BuildReqMessage(subscriptionId string) []byte {
-	return []byte(fmt.Sprintf(`["%s", "%s"]`, ReqMsgType, subscriptionId))
+	return fmt.Appendf(nil, `["%s", "%s"]`, ReqMsgType, subscriptionId)
 }

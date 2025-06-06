@@ -107,7 +107,7 @@ func (node *Node) Send(event *messaging.Event) error {
 
 	for _, peer := range node.PeersByPubKey {
 		peer.SendMessage(messaging.BuildEventMessage(event))
-
+		log.Printf("node: %v, event: %v, kind: %d, status: SENT, peer: %v", node.Config.PubKey, event.Id, event.Kind, peer.PubKey)
 	}
 
 	peerPubKeys := slices.Collect(maps.Keys(node.PeersByPubKey))
