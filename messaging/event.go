@@ -31,6 +31,7 @@ func (event *Event) Build() string {
 	return string(js)
 }
 
+// TODO Use signing module!
 func (event *Event) Sign(privateKey string) {
 	hashId := sha256.New()
 
@@ -58,6 +59,7 @@ func IsSigned(event *Event) bool {
 	return event.Id != "" && event.Sig != ""
 }
 
+// TODO maybe implement this on signing?
 func (event *Event) Verify() bool {
 	pubKeyBytes, _ := hex.DecodeString(event.PubKey)
 	pubKey, _ := secp256k1.ParsePubKey(pubKeyBytes)

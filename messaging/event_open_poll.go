@@ -1,16 +1,22 @@
 package messaging
 
+import (
+	"encoding/json"
+	"immccc/vdem/vote"
+)
 
 const (
 	OpenPollKind uint16 = 10003
 )
 
-func OpenPollEvent(description string, options []string) Event {
+func OpenPollEvent(poll *vote.Poll) Event {
+	
+	poll_as_json, _ := json.MarshalIndent(poll, " ", " ")
 
-	event := Event{
+	event := Event{  
 		Kind:    OpenPollKind,
-		Tags:    [][]string{{description}},
-		Content: "Vote request! THIS CONTENT SHOULD BE REPLACED WITH SOME REAL INFORMATION!",
+		Tags:    [][]string{{}},
+		Content: string(poll_as_json),
 	}
 
 	return event

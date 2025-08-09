@@ -7,7 +7,7 @@ const (
 func UpdatePollEvent(votedId string, selection uint8) Event {
 
 	event := Event{
-		Kind:    OpenPollKind,
+		Kind:    UpdatePollKind,
 		Tags:    [][]string{},
 		Content: "Vote update! THIS CONTENT SHOULD BE REPLACED WITH SOME REAL INFORMATION!",
 	}

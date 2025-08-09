@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"immccc/vdem/messaging"
 	"immccc/vdem/peer"
+	"immccc/vdem/vote"
 	"log"
 	"maps"
 	http "net/http"
@@ -19,11 +20,13 @@ import (
 // A Node acts as a Nostr relay. Holds instances of connected clients and it's in charge of handling
 // and storing status of the decentralized network.
 type Node struct {
-	Config        NodeConfig
-	PeersByPubKey map[string]peer.Peer
+	Config                             NodeConfig
+	PeersByPubKey                      map[string]peer.Peer
 
 	eventsWaitingForConfirmationById   map[string]messaging.Event
 	eventsWaitingForRegisterSenderById map[string][]messaging.Event
+
+	pollsById 						   map[string]vote.Poll
 }
 
 var whitelisted_events_for_unregistered_clients = map[uint16]bool{
@@ -98,14 +101,18 @@ func (node *Node) AddPeer(pr *peer.Peer, connect bool) error {
 	return nil
 }
 
-func (node *Node) Send(event *messaging.Event) error {
+func (node *Node) Send(event *messaging.Event, peers... *peer.Peer) error {
 
 	event.Sign(node.Config.PrivateKey)
 	if len(node.PeersByPubKey) == 0 {
 		return errors.New("no peers to send request")
 	}
 
-	for _, peer := range node.PeersByPubKey {
+	if len(peers) == 0 {
+		peers = node.getPeersAsArrayOfPointers()
+	}
+
+	for _, peer := range peers {
 		peer.SendMessage(messaging.BuildEventMessage(event))
 		log.Printf("node: %v, event: %v, kind: %d, status: SENT, peer: %v", node.Config.PubKey, event.Id, event.Kind, peer.PubKey)
 	}
@@ -283,4 +290,13 @@ func (node *Node) Close() {
 	for _, pr := range node.PeersByPubKey {
 		pr.Close()
 	}
+}
+
+func (node *Node) getPeersAsArrayOfPointers() []*peer.Peer {
+	peers := make([]*peer.Peer, 0, len(node.PeersByPubKey))
+	for pubKey := range node.PeersByPubKey {
+		peer := node.PeersByPubKey[pubKey]
+		peers = append(peers, &peer)
+	}
+	return peers
 }
