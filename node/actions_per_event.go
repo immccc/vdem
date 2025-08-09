@@ -16,6 +16,8 @@ func (node *Node) getActionsPerEvent(event *messaging.Event) (actionFunction, er
 		return ProcessEventOtherPeersOnNetwork, nil
 	case messaging.OpenPollKind:
 		return ProcessEventOpenPoll, nil
+	case messaging.SwapVotesKind:
+		return ProcessSwapVotesEvent, nil
 	default:
 		return nil, errors.New("unregistered event kind")
 	}
