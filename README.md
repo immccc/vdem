@@ -1,7 +1,10 @@
 # VDem: Democracy helper
 
-## Background
+## Status
 
+Early-stage R&D, paused. Implemented: Nostr NIP-01 peer messaging, basic encryption layer. Not yet implemented: funds ledger, rule consensus
+
+## Background
 Groups of humans can form groups where decisions can be taken that affects the rest, no matter how big or small the group is and the weight one person has on it.
 
 Given that interactions, decision taking and management tends to be polluted because a lot of factors like undercovered interests, pressure groups, fuzzy bureaucracy, overall corruption, etc. would be ideal to let a formal protocol 
